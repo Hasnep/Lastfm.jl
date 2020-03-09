@@ -1,0 +1,5 @@
+# LF normalization
+* text=auto
+*.jl text eol=crlf
+*.md text eol=crlf
+*.toml text eol=crlf

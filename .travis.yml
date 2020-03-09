@@ -1,0 +1,25 @@
+language: julia
+
+os: linux
+
+julia:
+  - 1.3
+  - nightly
+
+jobs:
+  include:
+    - stage: test
+      name: "Unit tests"
+      script:
+        - julia --project -e 'import Pkg; Pkg.build(); Pkg.test("Lastfm"; coverage=true)'
+      after_success:
+        - julia --project -e 'import Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+    - stage: documentation
+      julia: 1.0
+      name: "Deploy documentation"
+      script:
+        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+        - julia --project=docs/ docs/make.jl
+      if: branch = master
+  allow_failures:
+    - julia: nightly
