@@ -1,6 +1,6 @@
 name = "Lastfm"
 uuid = "20a74689-09cc-43cd-a293-878bb3cf2bcb"
-authors = ["Hannes Smit"]
+authors = ["Hannes Smit <hasnep@gmail.com>"]
 version = "0.1.0"
 
 [deps]
