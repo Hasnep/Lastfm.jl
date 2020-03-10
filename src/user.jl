@@ -1,4 +1,4 @@
-using JSON
+using JSON3
 using HTTP
 using DataFrames
 using Dates
@@ -37,7 +37,7 @@ function user_get_friends(
 )::DataFrame # TODO: add `recent_tracks::Bool,`
     uri::HTTP.URI = get_uri("user.getFriends", user = username, limit = limit, page = page) # TODO: add `recenttracks = recent_tracks,`
     response::HTTP.Response = get_response(uri)
-    friends = JSON.parse(String(response.body))["friends"]["user"]
+    friends = JSON3.read(String(response.body))["friends"]["user"]
     output::DataFrame = DataFrame(
         username = String[],
         country = String[],
@@ -72,7 +72,7 @@ Get information about a user profile.
 function user_get_info(username::String)::DataFrame
     uri::HTTP.URI = get_uri("user.getInfo", user = username)
     response::HTTP.Response = get_response(uri)
-    user_info = JSON.parse(String(response.body))["user"]
+    user_info = JSON3.read(String(response.body))["user"]
     output::DataFrame = DataFrame(
         username = String[],
         age = Integer[],
@@ -121,7 +121,7 @@ function user_get_loved_tracks(
 )::DataFrame
     uri::HTTP.URI = get_uri("user.getLovedTracks", user = username)
     response::HTTP.Response = get_response(uri)
-    loved_tracks = JSON.parse(String(response.body))["lovedtracks"]["track"]
+    loved_tracks = JSON3.read(String(response.body))["lovedtracks"]["track"]
     output::DataFrame =
         DataFrame(track = String[], artist = String[], date = DateTime[], url = String[])
     for loved_track in loved_tracks
@@ -162,7 +162,7 @@ function user_get_personal_tags(
         taggingtype = tagging_type,
     )
     response::HTTP.Response = get_response(uri)
-    personal_tags =JSON.parse(String(response.body))["taggings"][tagging_type*"s"][tagging_type]
+    personal_tags = JSON3.read(String(response.body))["taggings"][tagging_type * "s"][tagging_type]
     if tagging_type in ["album", "track"] 
         artist_info
     else 
@@ -179,7 +179,7 @@ function user_get_personal_tags(
         personal_tag_flattened = Dict(
             :username => username,
             :tag => tag,
-           Symbol(tagging_type)=> parse_string(personal_tag["name"]),
+           Symbol(tagging_type) => parse_string(personal_tag["name"]),
             :mbid => parse_string(personal_tag["mbid"]),
             :url => parse_string(personal_tag["url"]),
         )
@@ -209,7 +209,7 @@ function user_get_recent_tracks(
     @assert 1 <= limit <= 200 "limit must be between 1 and 200."
     uri::HTTP.URI = get_uri("user.getRecentTracks", user = username)
     response::HTTP.Response = get_response(uri)
-    recent_tracks = JSON.parse(String(response.body))["recenttracks"]["track"]
+    recent_tracks = JSON3.read(String(response.body))["recenttracks"]["track"]
     output::DataFrame = DataFrame(
         track = String[],
         album = String[],
@@ -253,7 +253,7 @@ function user_get_top_albums(
     @assert period ∈ valid_periods "period must be one of '$(join(valid_periods, "', '", "' or '"))'."
     uri::HTTP.URI = get_uri("user.getTopAlbums", user = username)
     response::HTTP.Response = get_response(uri)
-    top_albums = JSON.parse(String(response.body))["topalbums"]["album"]
+    top_albums = JSON3.read(String(response.body))["topalbums"]["album"]
     output::DataFrame = DataFrame(
         rank = Integer[],
         album = String[],
@@ -291,7 +291,7 @@ function user_get_top_artists(
     @assert period ∈ valid_periods "period must be one of '$(join(valid_periods, "', '", "' or '"))'."
     uri::HTTP.URI = get_uri("user.getTopArtists", user = username)
     response::HTTP.Response = get_response(uri)
-    top_artists = JSON.parse(String(response.body))["topartists"]["artist"]
+    top_artists = JSON3.read(String(response.body))["topartists"]["artist"]
     output::DataFrame =
         DataFrame(rank = Integer[], artist = String[], playcount = Integer[])
     for top_artist in top_artists
@@ -316,7 +316,7 @@ end
 # function user_get_top_tags(username::String; limit::Integer = 50)::DataFrame
 #     uri::HTTP.URI = get_uri("user.getTopTags", user = username)
 #     response::HTTP.Response = get_response(uri)
-#     tags = JSON.parse(String(response.body))
+#     tags = JSON3.read(String(response.body))
 #     output::DataFrame = DataFrame(rank = Integer[],
 #         album = String[],
 #         artist = String[],
@@ -353,7 +353,7 @@ function user_get_top_tracks(
     @assert 1 <= limit <= 200 "limit must be between 1 and 200."
     uri::HTTP.URI = get_uri("user.getTopTracks", user = username)
     response::HTTP.Response = get_response(uri)
-    tracks = JSON.parse(String(response.body))["toptracks"]["track"]
+    tracks = JSON3.read(String(response.body))["toptracks"]["track"]
     # @info tracks
     # output::DataFrame = DataFrame(rank = Integer[],
     # track=String[],
@@ -382,7 +382,7 @@ end
 # function user_get_weekly_album_chart(username::String; from::Date, to::Date)::DataFrame
 #     uri::HTTP.URI = get_uri("user.getWeeklyAlbumChart", user = username)
 #     response::HTTP.Response = get_response(uri)
-#     albums = JSON.parse(String(response.body))
+#     albums = JSON3.read(String(response.body))
 #   output::DataFrame = DataFrame(rank = Integer[],
 #         album = String[],
 #         artist = String[],
@@ -409,7 +409,7 @@ end
 # function user_get_weekly_artist_chart(username::String; from::Date, to::Date)::DataFrame
 #     uri::HTTP.URI = get_uri("user.getWeeklyArtistChart", user = username)
 #     response::HTTP.Response = get_response(uri)
-#     artists = JSON.parse(String(response.body))
+#     artists = JSON3.read(String(response.body))
 #   output::DataFrame = DataFrame(rank = Integer[],
 #         album = String[],
 #         artist = String[],
@@ -436,7 +436,7 @@ end
 # function user_get_weekly_chart_list(username::String)::DataFrame
 #     uri::HTTP.URI = get_uri("user.getWeeklyChartList", user = username)
 #     response::HTTP.Response = get_response(uri)
-#     charts = JSON.parse(String(response.body))
+#     charts = JSON3.read(String(response.body))
 #   output::DataFrame = DataFrame(rank = Integer[],
 #         album = String[],
 #         artist = String[],
@@ -465,7 +465,7 @@ Get a track chart for a user profile, for a given date range. If no date range i
 function user_get_weekly_track_chart(username::String; from::Date, to::Date)::DataFrame
     uri::HTTP.URI = get_uri("user.getWeeklyTrackChart", user = username)
     response::HTTP.Response = get_response(uri)
-    weekly_track_charts = JSON.parse(String(response.body))
+    weekly_track_charts = JSON3.read(String(response.body))
 
     # @info weekly_track_charts
 
