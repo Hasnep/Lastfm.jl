@@ -162,10 +162,11 @@ function user_get_personal_tags(
         taggingtype = tagging_type,
     )
     response::HTTP.Response = get_response(uri)
-    personal_tags = JSON3.read(String(response.body))["taggings"][tagging_type * "s"][tagging_type]
-    if tagging_type in ["album", "track"] 
+    personal_tags =
+        JSON3.read(String(response.body))["taggings"][tagging_type * "s"][tagging_type]
+    if tagging_type in ["album", "track"]
         artist_info
-    else 
+    else
 
     end
     output::DataFrame = DataFrame(Dict(
@@ -179,7 +180,7 @@ function user_get_personal_tags(
         personal_tag_flattened = Dict(
             :username => username,
             :tag => tag,
-           Symbol(tagging_type) => parse_string(personal_tag["name"]),
+            Symbol(tagging_type) => parse_string(personal_tag["name"]),
             :mbid => parse_string(personal_tag["mbid"]),
             :url => parse_string(personal_tag["url"]),
         )
@@ -214,7 +215,7 @@ function user_get_recent_tracks(
         track = String[],
         album = String[],
         artist = String[],
-        date = Union{DateTime,Missing}[],
+        date = Union{DateTime, Missing}[],
         url = String[],
         now_playing = Bool[],
     )
