@@ -1,4 +1,4 @@
-using JSON
+using JSON3
 using HTTP
 using DataFrames
 using Dates
@@ -22,7 +22,7 @@ function artist_get_correction(artist::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getCorrection", artist = artist)
     response::HTTP.Response = get_response(uri)
     artist_correction =
-        JSON.parse(String(response.body))["corrections"]["correction"]["artist"]
+        JSON3.read(String(response.body))["corrections"]["correction"]["artist"]
     output::DataFrame = DataFrame(
         artist = String[artist_correction["name"]],
         mbid = String[artist_correction["mbid"]],
@@ -50,7 +50,7 @@ function artist_get_info(
 )::DataFrame
     uri::HTTP.URI = get_uri("artist.getInfo", artist = artist)
     response::HTTP.Response = get_response(uri)
-    artist_info = JSON.parse(String(response.body))["artist"]
+    artist_info = JSON3.read(String(response.body))["artist"]
     output::DataFrame = DataFrame(
         artist = String[parse_string(artist_info["name"])],
         bio = String[parse_string(artist_info["bio"]["content"])],
@@ -82,7 +82,7 @@ Get all the artists similar to this artist
 function artist_get_similar(artist::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getSimilar", artist = artist)
     response::HTTP.Response = get_response(uri)
-    artist_similar_artists = JSON.parse(String(response.body))["similarartists"]["artist"]
+    artist_similar_artists = JSON3.read(String(response.body))["similarartists"]["artist"]
     output::DataFrame =
         DataFrame(artist = String[], mbid = String[], match = Float64[], url = String[])
     for artist_similar_artist in artist_similar_artists
@@ -110,7 +110,7 @@ Get the tags applied by an individual user to an artist on Last.fm. If accessed 
 function artist_get_tags(artist::String; username::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getTags", artist = artist, user = username)
     response::HTTP.Response = get_response(uri)
-    artist_tags = JSON.parse(String(response.body))
+    artist_tags = JSON3.read(String(response.body))
     # @info artist_tags
     output::DataFrame = DataFrame()
     # for artist_tag in artist_tags
@@ -134,7 +134,7 @@ Get the top albums for an artist on Last.fm, ordered by popularity.
 function artist_get_top_albums(artist::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getTopAlbums", artist = artist)
     response::HTTP.Response = get_response(uri)
-    top_albums = JSON.parse(String(response.body))["topalbums"]["album"]
+    top_albums = JSON3.read(String(response.body))["topalbums"]["album"]
     output::DataFrame =
         DataFrame(album = String[], playcount = Integer[], artist = String[])
     for top_album in top_albums
@@ -143,7 +143,7 @@ function artist_get_top_albums(artist::String)::DataFrame
             :playcount => top_album["playcount"],
             :artist => parse_string(top_album["artist"]["name"]),
         )
-            push!(output, top_album_flattened)
+        push!(output, top_album_flattened)
     end
     return output
 end
@@ -160,7 +160,7 @@ Get the top tags for an artist on Last.fm, ordered by popularity.
 function artist_get_top_tags(artist::String; autocorrect::Bool = false)::DataFrame
     uri::HTTP.URI = get_uri("artist.getTopTags", artist = artist)
     response::HTTP.Response = get_response(uri)
-    top_tags = JSON.parse(String(response.body))["toptags"]
+    top_tags = JSON3.read(String(response.body))["toptags"]
     output::DataFrame = DataFrame(artist = String[], tag = String[], weight = Integer[])
     for top_tag in top_tags["tag"]
         top_tag_flattened = Dict(
@@ -187,7 +187,7 @@ Get the top tracks by an artist on Last.fm, ordered by popularity
 function artist_get_top_tracks(artist::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getTopTracks", artist = artist)
     response::HTTP.Response = get_response(uri)
-    top_tracks = JSON.parse(String(response.body))["toptracks"]["track"]
+    top_tracks = JSON3.read(String(response.body))["toptracks"]["track"]
     output::DataFrame = DataFrame(
         rank = Integer[],
         track = String[],
