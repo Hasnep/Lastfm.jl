@@ -7,12 +7,7 @@ function get_uri(method::String; kwargs...)::HTTP.URI
     @assert haskey(ENV, "LASTFMAUTH") "Last.fm key not defined, use authenticate_lastfm() to authenticate"
     query::Dict{Symbol, Union{String, Integer}} =
         Dict(:method => method, :api_key => ENV["LASTFMAUTH"], :format => "json", kwargs...)
-    uri::HTTP.URI = HTTP.URI(;
-        scheme = "https",
-        host = "ws.audioscrobbler.com/2.0",
-        path = "/",
-        query = query,
-    )
+    uri::HTTP.URI = HTTP.URI(; scheme = "https", host = "ws.audioscrobbler.com/2.0", path = "/", query = query)
     return uri
 end
 

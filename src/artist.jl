@@ -21,8 +21,7 @@ Use the last.fm corrections data to check whether the supplied artist has a corr
 function artist_get_correction(artist::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getCorrection", artist = artist)
     response::HTTP.Response = get_response(uri)
-    artist_correction =
-        JSON3.read(String(response.body))["corrections"]["correction"]["artist"]
+    artist_correction = JSON3.read(String(response.body))["corrections"]["correction"]["artist"]
     output::DataFrame = DataFrame(
         artist = String[artist_correction["name"]],
         mbid = String[artist_correction["mbid"]],
@@ -57,13 +56,9 @@ function artist_get_info(
         listeners = Integer[parse_integer(artist_info["stats"]["listeners"])],
         on_tour = Bool[parse_bool(artist_info["ontour"])],
         playcount = Integer[parse_integer(artist_info["stats"]["playcount"])],
-        similar = Array{String}[[
-            parse_string(artist["name"]) for artist in artist_info["similar"]["artist"]
-        ]],
+        similar = Array{String}[[parse_string(artist["name"]) for artist in artist_info["similar"]["artist"]]],
         summary = String[parse_string(artist_info["bio"]["summary"])],
-        tags = Array{String}[[
-            parse_string(tag["name"]) for tag in artist_info["tags"]["tag"]
-        ]],
+        tags = Array{String}[[parse_string(tag["name"]) for tag in artist_info["tags"]["tag"]]],
     )
 
     return output
@@ -83,8 +78,7 @@ function artist_get_similar(artist::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getSimilar", artist = artist)
     response::HTTP.Response = get_response(uri)
     artist_similar_artists = JSON3.read(String(response.body))["similarartists"]["artist"]
-    output::DataFrame =
-        DataFrame(artist = String[], mbid = String[], match = Float64[], url = String[])
+    output::DataFrame = DataFrame(artist = String[], mbid = String[], match = Float64[], url = String[])
     for artist_similar_artist in artist_similar_artists
         artist_similar_artist_flattened = Dict(
             :artist => parse_string(artist_similar_artist["name"]),
@@ -135,8 +129,7 @@ function artist_get_top_albums(artist::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getTopAlbums", artist = artist)
     response::HTTP.Response = get_response(uri)
     top_albums = JSON3.read(String(response.body))["topalbums"]["album"]
-    output::DataFrame =
-        DataFrame(album = String[], playcount = Integer[], artist = String[])
+    output::DataFrame = DataFrame(album = String[], playcount = Integer[], artist = String[])
     for top_album in top_albums
         top_album_flattened = Dict(
             :album => parse_string(top_album["name"]),
@@ -188,13 +181,8 @@ function artist_get_top_tracks(artist::String)::DataFrame
     uri::HTTP.URI = get_uri("artist.getTopTracks", artist = artist)
     response::HTTP.Response = get_response(uri)
     top_tracks = JSON3.read(String(response.body))["toptracks"]["track"]
-    output::DataFrame = DataFrame(
-        rank = Integer[],
-        track = String[],
-        artist = String[],
-        listeners = Integer[],
-        playcount = Integer[],
-    )
+    output::DataFrame =
+        DataFrame(rank = Integer[], track = String[], artist = String[], listeners = Integer[], playcount = Integer[])
     for top_track in top_tracks
         top_track_flattened = Dict(
             :rank => parse_integer(top_track["@attr"]["rank"]),
