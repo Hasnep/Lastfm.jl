@@ -30,11 +30,7 @@ Get a list of the user's friends on Last.fm.
 * `limit` The number of results to fetch per page # TODO: add this arg
 * `page` The page number to fetch # TODO: add this arg
 """
-function user_get_friends(
-    username::String;
-    limit::Integer = 50,
-    page::Integer = 1,
-)::DataFrame # TODO: add `recent_tracks::Bool,`
+function user_get_friends(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame # TODO: add `recent_tracks::Bool,`
     uri::HTTP.URI = get_uri("user.getFriends", user = username, limit = limit, page = page) # TODO: add `recenttracks = recent_tracks,`
     response::HTTP.Response = get_response(uri)
     friends = JSON3.read(String(response.body))["friends"]["user"]
@@ -114,16 +110,11 @@ Get the last 50 tracks loved by a user.
 * `limit` The number of results to fetch per page
 * `page` The page number to fetch
 """
-function user_get_loved_tracks(
-    username::String;
-    limit::Integer = 50,
-    page::Integer = 1,
-)::DataFrame
+function user_get_loved_tracks(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame
     uri::HTTP.URI = get_uri("user.getLovedTracks", user = username)
     response::HTTP.Response = get_response(uri)
     loved_tracks = JSON3.read(String(response.body))["lovedtracks"]["track"]
-    output::DataFrame =
-        DataFrame(track = String[], artist = String[], date = DateTime[], url = String[])
+    output::DataFrame = DataFrame(track = String[], artist = String[], date = DateTime[], url = String[])
     for loved_track in loved_tracks
         loved_track_flattened = Dict(
             :track => parse_string(loved_track["name"]),
@@ -155,15 +146,9 @@ function user_get_personal_tags(
     page::Integer = 1,
 )::DataFrame
     @assert tagging_type ∈ valid_tagging_types "tagging_type must be one of '$(join(valid_tagging_types, "', '", "' or '"))'."
-    uri::HTTP.URI = get_uri(
-        "user.getPersonalTags",
-        user = username,
-        tag = tag,
-        taggingtype = tagging_type,
-    )
+    uri::HTTP.URI = get_uri("user.getPersonalTags", user = username, tag = tag, taggingtype = tagging_type)
     response::HTTP.Response = get_response(uri)
-    personal_tags =
-        JSON3.read(String(response.body))["taggings"][tagging_type * "s"][tagging_type]
+    personal_tags = JSON3.read(String(response.body))["taggings"][tagging_type * "s"][tagging_type]
     if tagging_type in ["album", "track"]
         artist_info
     else
@@ -201,11 +186,7 @@ Get a list of the recent tracks listened to by this user. Also includes the curr
 * `extended` (0|1) (Optional): Includes extended data in each artist, and whether or not the user has loved each track
 * `to` (Optional) : End timestamp of a range - only display scrobbles before this time, in UNIX timestamp format (integer number of seconds since 00:00:00, January 1st 1970 UTC). This must be in the UTC time zone.
 """
-function user_get_recent_tracks(
-    username::String;
-    limit::Integer = 50,
-    page::Integer = 1,
-)::DataFrame
+function user_get_recent_tracks(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame
     # TODO: get nowplaying = true/false
     @assert 1 <= limit <= 200 "limit must be between 1 and 200."
     uri::HTTP.URI = get_uri("user.getRecentTracks", user = username)
@@ -225,8 +206,7 @@ function user_get_recent_tracks(
             :track => parse_string(recent_track["name"]),
             :album => parse_string(recent_track["album"]["#text"]),
             :artist => parse_string(recent_track["artist"]["#text"]),
-            :date =>
-                    now_playing ? missing : parse_unixdatetime(recent_track["date"]["uts"]),
+            :date => now_playing ? missing : parse_unixdatetime(recent_track["date"]["uts"]),
             :url => parse_string(recent_track["url"]),
             :now_playing => now_playing,
         )
@@ -255,12 +235,7 @@ function user_get_top_albums(
     uri::HTTP.URI = get_uri("user.getTopAlbums", user = username)
     response::HTTP.Response = get_response(uri)
     top_albums = JSON3.read(String(response.body))["topalbums"]["album"]
-    output::DataFrame = DataFrame(
-        rank = Integer[],
-        album = String[],
-        artist = String[],
-        playcount = Integer[],
-    )
+    output::DataFrame = DataFrame(rank = Integer[], album = String[], artist = String[], playcount = Integer[])
     for top_album in top_albums
         top_album_flattened = Dict(
             :rank => parse_integer(top_album["@attr"]["rank"]),
@@ -293,8 +268,7 @@ function user_get_top_artists(
     uri::HTTP.URI = get_uri("user.getTopArtists", user = username)
     response::HTTP.Response = get_response(uri)
     top_artists = JSON3.read(String(response.body))["topartists"]["artist"]
-    output::DataFrame =
-        DataFrame(rank = Integer[], artist = String[], playcount = Integer[])
+    output::DataFrame = DataFrame(rank = Integer[], artist = String[], playcount = Integer[])
     for top_artist in top_artists
         top_artist_flattened = Dict(
             :rank => parse_integer(top_artist["@attr"]["rank"]),

@@ -9,6 +9,7 @@ using Test
         file_string = replace(file_string, "\r\n" => "\n") # Normalise EOLs
         file_string_formatted = JuliaFormatter.format_text(
             file_string,
+            margin = 120,
             always_for_in = true,
             whitespace_typedefs = true,
             whitespace_ops_in_indices = true,
