@@ -6,7 +6,6 @@ using Test
     source_files = glob("../**/*.jl")
     @testset "Test $filepath is formtted correctly" for filepath in source_files
         file_string = read(filepath, String)
-        file_string = replace(file_string, "\r\n" => "\n") # Normalise EOLs
         file_string_formatted = JuliaFormatter.format_text(
             file_string,
             margin = 120,
