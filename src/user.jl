@@ -401,32 +401,23 @@ end
 #     return output
 # end
 
-# """
-#  function user_get_weekly_chart_list(username::String)::DataFrame
+"""
+    function user_get_weekly_chart_list(username::String)::DataFrame
 
-# Get a list of available charts for this user, expressed as date ranges which can be sent to the chart services.
-
-# * `username` The name of the Last.fm user to fetch the available charts of
-# """
-# function user_get_weekly_chart_list(username::String)::DataFrame
-#     uri::HTTP.URI = get_uri("user.getWeeklyChartList", user = username)
-#     response::HTTP.Response = get_response(uri)
-#     charts = JSON3.read(String(response.body))
-#   output::DataFrame = DataFrame(rank = Integer[],
-#         album = String[],
-#         artist = String[],
-#         playcount = Integer[],
-#     )
-#     for top_album in top_albums
-#         top_album_flattened = Dict(:rank => parse_integer(top_album["@attr"]["rank"]),
-#             :album => parse_string(top_album["name"]),
-#             :artist => parse_string(top_album["artist"]["name"]),
-#             :playcount => parse_integer(top_album["playcount"]),
-#         )
-#         push!(output, top_album_flattened)
-#     end
-#     return output
-# end
+Get a list of available charts for this user, expressed as date ranges which can be sent to the chart services.
+"""
+function user_get_weekly_chart_list(username::String)::DataFrame
+    uri::HTTP.URI = get_uri("user.getWeeklyChartList", user = username)
+    response::HTTP.Response = get_response(uri)
+    charts = JSON3.read(String(response.body))[:weeklychartlist][:chart]
+    output::DataFrame = DataFrame(from = Date[], to = Date[])
+    for chart in charts
+        chart_flattened =
+            Dict(:from => parse_core_data_timestamp(chart[:from]), :to => parse_core_data_timestamp(chart[:to]))
+        push!(output, chart_flattened)
+    end
+    return output
+end
 
 """
     function user_get_weekly_track_chart(username::String; from::Date, to::Date)::DataFrame
