@@ -437,25 +437,19 @@ Get a track chart for a user profile, for a given date range. If no date range i
 * `from` (Optional) : The date at which the chart should start from. See User.getWeeklyChartList for more.
 * `to` (Optional) : The date at which the chart should end on. See User.getWeeklyChartList for more.
 """
-function user_get_weekly_track_chart(username::String; from::Date, to::Date)::DataFrame
+function user_get_weekly_track_chart(username::String)::DataFrame
     uri::HTTP.URI = get_uri("user.getWeeklyTrackChart", user = username)
     response::HTTP.Response = get_response(uri)
-    weekly_track_charts = JSON3.read(String(response.body))
-
-    # @info weekly_track_charts
-
-    #  output::DataFrame = DataFrame(rank = Integer[],
-    #     album = String[],
-    #     artist = String[],
-    #     playcount = Integer[],
-    # )
-    # for top_album in top_albums
-    #     top_album_flattened = Dict(:rank => parse_integer(top_album["@attr"]["rank"]),
-    #         :album => parse_string(top_album["name"]),
-    #         :artist => parse_string(top_album["artist"]["name"]),
-    #         :playcount => parse_integer(top_album["playcount"]),
-    #     )
-    #     push!(output, top_album_flattened)
-    # end
-    # return output
+    weekly_track_charts = JSON3.read(String(response.body))[:weeklytrackchart][:track]
+    output::DataFrame = DataFrame(rank = Integer[], track = String[], artist = String[], playcount = Integer[])
+    for track_chart in weekly_track_charts
+        track_chart_flattened = Dict(
+            :rank => parse_integer(track_chart[Symbol("@attr")][:rank]),
+            :track => parse_string(track_chart[:name]),
+            :artist => parse_string(track_chart[:artist][Symbol("#text")]),
+            :playcount => parse_integer(track_chart[:playcount]),
+        )
+        push!(output, track_chart_flattened)
+    end
+    return output
 end
