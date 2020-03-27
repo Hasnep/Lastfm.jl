@@ -13,6 +13,10 @@ function parse_unixdatetime(column_value)::DateTime
     return unix2datetime(parse(Int, column_value))
 end
 
+function parse_core_data_timestamp(column_value)::DateTime
+    return unix2datetime(parse(Int, column_value)) + Month(31)
+end
+
 function parse_integer(column_value)::Integer
     return parse(Int, column_value)
 end
