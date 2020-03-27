@@ -92,7 +92,7 @@ function user_get_info(username::String)::DataFrame
         :playcount => parse_integer(user_info["playcount"]),
         :playlists => parse_integer(user_info["playlists"]),
         :realname => parse_string(user_info["realname"]),
-        :registered_datetime => parse_unixdatetime(user_info["registered"]["unixtime"]),
+        :registered_datetime => parse_unix_timestamp(user_info["registered"]["unixtime"]),
         :subscriber => parse_string(user_info["subscriber"]),
         :type => parse_string(user_info["type"]),
         :url => parse_string(user_info["url"]),
@@ -119,7 +119,7 @@ function user_get_loved_tracks(username::String; limit::Integer = 50, page::Inte
         loved_track_flattened = Dict(
             :track => parse_string(loved_track["name"]),
             :artist => parse_string(loved_track["artist"]["name"]),
-            :date => parse_unixdatetime(loved_track["date"]["uts"]),
+            :date => parse_unix_timestamp(loved_track["date"]["uts"]),
             :url => parse_string(loved_track["url"]),
         )
         push!(output, loved_track_flattened)
@@ -206,7 +206,7 @@ function user_get_recent_tracks(username::String; limit::Integer = 50, page::Int
             :track => parse_string(recent_track["name"]),
             :album => parse_string(recent_track["album"]["#text"]),
             :artist => parse_string(recent_track["artist"]["#text"]),
-            :date => now_playing ? missing : parse_unixdatetime(recent_track["date"]["uts"]),
+            :date => now_playing ? missing : parse_unix_timestamp(recent_track["date"]["uts"]),
             :url => parse_string(recent_track["url"]),
             :now_playing => now_playing,
         )

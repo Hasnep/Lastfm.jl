@@ -9,7 +9,7 @@ function parse_datetime(column_value, datetime_format::DateFormat)::DateTime
     return DateTime(column_value, datetime_format)
 end
 
-function parse_unixdatetime(column_value)::DateTime
+function parse_unix_timestamp(column_value)::DateTime
     return unix2datetime(parse(Int, column_value))
 end
 
