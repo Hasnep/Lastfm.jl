@@ -328,23 +328,33 @@ function user_get_top_tracks(
     @assert 1 <= limit <= 200 "limit must be between 1 and 200."
     uri::HTTP.URI = get_uri("user.getTopTracks", user = username)
     response::HTTP.Response = get_response(uri)
-    tracks = JSON3.read(String(response.body))["toptracks"]["track"]
-    # @info tracks
-    # output::DataFrame = DataFrame(rank = Integer[],
-    # track=String[],
-    #     album = String[],
-    #     artist = String[],
-    #     playcount = Integer[],
-    # )
-    # for top_album in top_albums
-    #     top_album_flattened = Dict(:rank => parse_integer(top_album["@attr"]["rank"]),
-    #         :album => parse_string(top_album["name"]),
-    #         :artist => parse_string(top_album["artist"]["name"]),
-    #         :playcount => parse_integer(top_album["playcount"]),
-    #     )
-    #     push!(output, top_album_flattened)
-    # end
-    # return output
+    top_tracks = JSON3.read(String(response.body))[:toptracks][:track]
+    output::DataFrame = DataFrame(
+        rank = Integer[],
+        track = String[],
+        artist = String[],
+        playcount = Integer[],
+        duration = Integer[],
+        track_mbid = String[],
+        track_url = String[],
+        artist_mbid = String[],
+        artist_url = String[],
+    )
+    for top_track in top_tracks
+        top_track_flattened = Dict(
+            :rank => parse_integer(top_track[Symbol("@attr")][:rank]),
+            :track => parse_string(top_track[:name]),
+            :artist => parse_string(top_track[:artist][:name]),
+            :playcount => parse_integer(top_track[:playcount]),
+            :duration => parse_integer(top_track[:duration]),
+            :track_mbid => parse_string(top_track[:mbid]),
+            :track_url => parse_string(top_track[:url]),
+            :artist_mbid => parse_string(top_track[:artist][:mbid]),
+            :artist_url => parse_string(top_track[:artist][:url]),
+        )
+        push!(output, top_track_flattened)
+    end
+    return output
 end
 
 """
