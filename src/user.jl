@@ -280,33 +280,29 @@ function user_get_top_artists(
     return output
 end
 
-# """
-#     function user_get_top_tags(username::String; limit::Integer = 50)::DataFrame
+"""
+    function user_get_top_tags(username::String; limit::Integer = 50)::DataFrame
 
-# Get the top tags used by this user.
+Get the top tags used by this user.
 
-# * `username` The name of the Last.fm user to fetch the top tags of
-# * `limit` The number of results to fetch per page
-# """
-# function user_get_top_tags(username::String; limit::Integer = 50)::DataFrame
-#     uri::HTTP.URI = get_uri("user.getTopTags", user = username)
-#     response::HTTP.Response = get_response(uri)
-#     tags = JSON3.read(String(response.body))
-#     output::DataFrame = DataFrame(rank = Integer[],
-#         album = String[],
-#         artist = String[],
-#         playcount = Integer[],
-#     )
-#     for top_album in top_albums
-#         top_album_flattened = Dict(:rank => parse_integer(top_album["@attr"]["rank"]),
-#             :album => parse_string(top_album["name"]),
-#             :artist => parse_string(top_album["artist"]["name"]),
-#             :playcount => parse_integer(top_album["playcount"]),
-#         )
-#         push!(output, top_album_flattened)
-#     end
-#     return output
-# end
+* `username` The name of the Last.fm user to fetch the top tags of
+* `limit` The number of results to fetch per page
+"""
+function user_get_top_tags(username::String; limit::Integer = 50)::DataFrame
+    uri::HTTP.URI = get_uri("user.getTopTags", user = username)
+    response::HTTP.Response = get_response(uri)
+    top_tags = JSON3.read(String(response.body))[:toptags][:tag]
+    output::DataFrame = DataFrame(tag = String[], n = Integer[], tag_url = String[])
+    for top_tag in top_tags
+        top_tag_flattened = Dict(
+            :tag => parse_string(top_tag[:name]),
+            :n => parse_integer(top_tag[:count]),
+            :tag_url => parse_string(top_tag[:url]),
+        )
+        push!(output, top_tag_flattened)
+    end
+    return output
+end
 
 """
     function user_get_top_tracks(username::String; period::String = "overall", limit::Int = 50, page::Integer = 1)::DataFrame
