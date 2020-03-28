@@ -347,32 +347,42 @@ function user_get_top_tracks(
     # return output
 end
 
-# """
-# Get an album chart for a user profile, for a given date range. If no date range is supplied, it will return the most recent album chart for this user.
+"""
+    function user_get_weekly_album_chart(username::String)::DataFrame
 
-# * `username` The name of the Last.fm user to fetch the album chart of
-# from (Optional) : The date at which the chart should start from. See User.getChartsList for more.
-# to (Optional) : The date at which the chart should end on. See User.getChartsList for more.
-# """
-# function user_get_weekly_album_chart(username::String; from::Date, to::Date)::DataFrame
-#     uri::HTTP.URI = get_uri("user.getWeeklyAlbumChart", user = username)
-#     response::HTTP.Response = get_response(uri)
-#     albums = JSON3.read(String(response.body))
-#   output::DataFrame = DataFrame(rank = Integer[],
-#         album = String[],
-#         artist = String[],
-#         playcount = Integer[],
-#     )
-#     for top_album in top_albums
-#         top_album_flattened = Dict(:rank => parse_integer(top_album["@attr"]["rank"]),
-#             :album => parse_string(top_album["name"]),
-#             :artist => parse_string(top_album["artist"]["name"]),
-#             :playcount => parse_integer(top_album["playcount"]),
-#         )
-#         push!(output, top_album_flattened)
-#     end
-#     return output
-# end
+Get an album chart for a user profile, for a given date range. If no date range is supplied, it will return the most recent album chart for this user.
+
+* `username` The name of the Last.fm user to fetch the album chart of
+* `from` (Optional) The date at which the chart should start from. See User.getChartsList for more.
+* `to` (Optional) The date at which the chart should end on. See User.getChartsList for more.
+"""
+function user_get_weekly_album_chart(username::String)::DataFrame
+    uri::HTTP.URI = get_uri("user.getWeeklyAlbumChart", user = username)
+    response::HTTP.Response = get_response(uri)
+    weekly_album_charts = JSON3.read(String(response.body))[:weeklyalbumchart][:album]
+    output::DataFrame = DataFrame(
+        rank = Integer[],
+        album = String[],
+        artist = String[],
+        playcount = Integer[],
+        album_mbid = String[],
+        artist_mbid = String[],
+        url = String[],
+    )
+    for album_chart in weekly_album_charts
+        album_chart_flattened = Dict(
+            :rank => parse_integer(album_chart[Symbol("@attr")][:rank]),
+            :album => parse_string(album_chart[:name]),
+            :artist => parse_string(album_chart[:artist][Symbol("#text")]),
+            :playcount => parse_integer(album_chart[:playcount]),
+            :album_mbid => parse_string(album_chart[:mbid]),
+            :artist_mbid => parse_string(album_chart[:artist][:mbid]),
+            :url => parse_string(album_chart[:url]),
+        )
+        push!(output, album_chart_flattened)
+    end
+    return output
+end
 
 """
     function user_get_weekly_artist_chart(username::String; from::Date, to::Date)::DataFrame
