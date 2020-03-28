@@ -146,30 +146,118 @@ function user_get_personal_tags(
     page::Integer = 1,
 )::DataFrame
     @assert tagging_type ∈ valid_tagging_types "tagging_type must be one of '$(join(valid_tagging_types, "', '", "' or '"))'."
-    uri::HTTP.URI = get_uri("user.getPersonalTags", user = username, tag = tag, taggingtype = tagging_type)
-    response::HTTP.Response = get_response(uri)
-    personal_tags = JSON3.read(String(response.body))["taggings"][tagging_type * "s"][tagging_type]
-    if tagging_type in ["album", "track"]
-        artist_info
+    if tagging_type == "artist"
+        return user_get_personal_artist_tags(username, tag; limit = limit, page = page)
+    elseif tagging_type == "album"
+        return user_get_personal_album_tags(username, tag; limit = limit, page = page)
+    elseif tagging_type == "track"
+        return user_get_personal_track_tags(username, tag; limit = limit, page = page)
     else
-
+        return DataFrame()
     end
-    output::DataFrame = DataFrame(Dict(
-        :username => String[],
-        :tag => String[],
-        Symbol(tagging_type) => String[],
-        :mbid => String[],
-        :url => String[],
-    ))
-    for personal_tag in personal_tags
-        personal_tag_flattened = Dict(
-            :username => username,
+end
+
+"""
+    function user_get_personal_artist_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+
+Get the user's personal tags for artists.
+
+* `username` The name of the Last.fm user to fetch the personal tags of
+* `tag` The tag you are interested in
+* `limit` The number of results to fetch per page
+* `page` The page number to fetch
+"""
+function user_get_personal_artist_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+    uri::HTTP.URI = get_uri("user.getPersonalTags", user = username, tag = tag, taggingtype = "artist")
+    response::HTTP.Response = get_response(uri)
+    artist_tags = JSON3.read(String(response.body))[:taggings][:artists][:artist]
+    output::DataFrame = DataFrame(tag = String[], artist = String[], artist_mbid = String[], artist_url = String[])
+    for artist_tag in artist_tags
+        artist_tag_flattened = Dict(
             :tag => tag,
-            Symbol(tagging_type) => parse_string(personal_tag["name"]),
-            :mbid => parse_string(personal_tag["mbid"]),
-            :url => parse_string(personal_tag["url"]),
+            :artist => parse_string(artist_tag[:name]),
+            :artist_mbid => parse_string(artist_tag[:mbid]),
+            :artist_url => parse_string(artist_tag[:url]),
         )
-        push!(output, personal_tag_flattened)
+        push!(output, artist_tag_flattened)
+    end
+    return output
+end
+
+"""
+    function user_get_personal_album_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+
+Get the user's personal tags for albums.
+
+* `username` The name of the Last.fm user to fetch the personal tags of
+* `tag` The tag you are interested in
+* `limit` The number of results to fetch per page
+* `page` The page number to fetch
+"""
+function user_get_personal_album_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+    uri::HTTP.URI = get_uri("user.getPersonalTags", user = username, tag = tag, taggingtype = "album")
+    response::HTTP.Response = get_response(uri)
+    album_tags = JSON3.read(String(response.body))[:taggings][:albums][:album]
+    output::DataFrame = DataFrame(
+        tag = String[],
+        album = String[],
+        artist = String[],
+        album_mbid = String[],
+        album_url = String[],
+        artist_mbid = String[],
+        artist_url = String[],
+    )
+    for album_tag in album_tags
+        album_tag_flattened = Dict(
+            :tag => tag,
+            :album => parse_string(album_tag[:name]),
+            :artist => parse_string(album_tag[:artist][:name]),
+            :album_mbid => parse_string(album_tag[:mbid]),
+            :album_url => parse_string(album_tag[:url]),
+            :artist_mbid => parse_string(album_tag[:artist][:mbid]),
+            :artist_url => parse_string(album_tag[:artist][:url]),
+        )
+        push!(output, album_tag_flattened)
+    end
+    return output
+end
+
+"""
+    function user_get_personal_track_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+
+Get the user's personal tags for tracks.
+
+* `username` The name of the Last.fm user to fetch the personal tags of
+* `tag` The tag you are interested in
+* `limit` The number of results to fetch per page
+* `page` The page number to fetch
+"""
+function user_get_personal_track_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+    uri::HTTP.URI = get_uri("user.getPersonalTags", user = username, tag = tag, taggingtype = "track")
+    response::HTTP.Response = get_response(uri)
+    track_tags = JSON3.read(String(response.body))[:taggings][:tracks][:track]
+    output::DataFrame = DataFrame(
+        tag = String[],
+        track = String[],
+        duration = Union{Integer, Missing}[],
+        artist = String[],
+        track_mbid = String[],
+        track_url = String[],
+        artist_mbid = String[],
+        artist_url = String[],
+    )
+    for track_tag in track_tags
+        track_tag_flattened = Dict(
+            :tag => tag,
+            :track => parse_string(track_tag[:name]),
+            :duration => (track_tag[:duration] == "FIXME") ? missing : parse_integer(track_tag[:duration]),
+            :artist => parse_string(track_tag[:artist][:name]),
+            :track_mbid => parse_string(track_tag[:mbid]),
+            :track_url => parse_string(track_tag[:url]),
+            :artist_mbid => parse_string(track_tag[:artist][:mbid]),
+            :artist_url => parse_string(track_tag[:artist][:url]),
+        )
+        push!(output, track_tag_flattened)
     end
     return output
 end
