@@ -397,18 +397,20 @@ function user_get_weekly_artist_chart(username::String)::DataFrame
     uri::HTTP.URI = get_uri("user.getWeeklyArtistChart", user = username)
     response::HTTP.Response = get_response(uri)
     weekly_artist_charts = JSON3.read(String(response.body))[:weeklyartistchart][:artist]
-    output::DataFrame = DataFrame(rank = Integer[],
-     artist = String[], 
-     playcount = Integer[], 
-     mbid = String[], 
-     url = String[])
+    output::DataFrame = DataFrame(
+        rank = Integer[],
+        artist = String[],
+        playcount = Integer[],
+        artist_mbid = String[],
+        artist_url = String[],
+    )
     for artist_chart in weekly_artist_charts
         artist_chart_flattened = Dict(
             :rank => parse_integer(artist_chart[Symbol("@attr")][:rank]),
             :artist => parse_string(artist_chart[:name]),
             :playcount => parse_integer(artist_chart[:playcount]),
-            :mbid => parse_string(artist_chart[:mbid]),
-            :url => parse_string(artist_chart[:url]),
+            :artist_mbid => parse_string(artist_chart[:mbid]),
+            :artist_url => parse_string(artist_chart[:url]),
         )
         push!(output, artist_chart_flattened)
     end
