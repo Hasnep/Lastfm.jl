@@ -196,7 +196,7 @@ function user_get_recent_tracks(username::String; limit::Integer = 50, page::Int
         track = String[],
         album = String[],
         artist = String[],
-        date = Union{DateTime, Missing}[],
+        date = Union{DateTime,Missing}[],
         url = String[],
         now_playing = Bool[],
     )
