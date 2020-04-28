@@ -3,6 +3,7 @@ include("errorcodes.jl")
 include("authentication.jl")
 include("flatten.jl")
 include("requests.jl")
-include("user.jl")
+include("album.jl")
 include("artist.jl")
+include("user.jl")
 end
