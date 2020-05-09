@@ -2,8 +2,8 @@ using Test
 using Lastfm
 using DataFrames
 
-album_test = "Last Dinosaurs"
-artist_test = "Yumeno Garden"
+album_test = "Yumeno Garden"
+artist_test = "Last Dinosaurs"
 username_test = "Hasnep"
 
 authenticate_lastfm(ENV["LASTFM_KEY"])
