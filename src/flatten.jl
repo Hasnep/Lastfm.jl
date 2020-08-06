@@ -28,3 +28,23 @@ end
 function parse_bool(column_value)::Bool
     return Bool(parse(Int, column_value))
 end
+
+function parse_url(column_value::String)::HTTP.URI
+    return HTTP.URI(column_value)
+end
+
+function parse_images(images::AbstractVector)::Images
+    return Images(
+        small = first([[parse_url(image[Symbol("#text")]) for image in images if image[:size] == "small"]..., missing]),
+        medium = first([
+            [parse_url(image[Symbol("#text")]) for image in images if image[:size] == "medium"]...,
+            missing,
+        ]),
+        large = first([[parse_url(image[Symbol("#text")]) for image in images if image[:size] == "large"]..., missing]),
+        extralarge = first([
+            [parse_url(image[Symbol("#text")]) for image in images if image[:size] == "extralarge"]...,
+            missing,
+        ]),
+        mega = first([[parse_url(image[Symbol("#text")]) for image in images if image[:size] == "mega"]..., missing]),
+    )
+end
