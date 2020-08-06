@@ -1,3 +1,5 @@
+export error_codes
+
 error_codes = Dict(
     1 => "This error does not exist",
     2 => "Invalid service - This service does not exist",

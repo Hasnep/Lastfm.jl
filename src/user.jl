@@ -6,7 +6,9 @@ using Dates
 export user_get_friends
 export user_get_info
 export user_get_loved_tracks
-export user_get_personal_tags
+export user_get_personal_artist_tags
+export user_get_personal_album_tags
+export user_get_personal_track_tags
 export user_get_recent_tracks
 export user_get_top_albums
 export user_get_top_artists
@@ -17,516 +19,343 @@ export user_get_weekly_artist_chart
 export user_get_weekly_chart_list
 export user_get_weekly_track_chart
 
+
 valid_periods = ["overall", "7day", "1month", "3month", "6month", "12month"]
 valid_tagging_types = ["artist", "album", "track"]
 
 """
-    function user_get_friends(username::String; recenttracks::Bool, limit::Integer = 50, page::Integer = 1)::DataFrame
+    function user_get_friends(username::String; recenttracks::Bool, )::DataFrame
 
 Get a list of the user's friends on Last.fm.
-
-* `username` The name of the Last.fm user to fetch the friends of
-* `recenttracks` Whether or not to include information about friends' recent listening in the response # TODO: add this arg and decide on its type conversion and default value
-* `limit` The number of results to fetch per page # TODO: add this arg
-* `page` The page number to fetch # TODO: add this arg
 """
-function user_get_friends(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame # TODO: add `recent_tracks::Bool,`
-    uri::HTTP.URI = get_uri("user.getFriends", user = username, limit = limit, page = page) # TODO: add `recenttracks = recent_tracks,`
+function user_get_friends(username::String)::Vector{User}
+    uri::HTTP.URI = get_uri("user.getFriends", user = username)
     response::HTTP.Response = get_response(uri)
-    friends = JSON3.read(String(response.body))["friends"]["user"]
-    output::DataFrame = DataFrame(
-        username = String[],
-        country = String[],
-        playcount = Integer[],
-        playlists = Integer[],
-        realname = String[],
-        subscriber = Bool[],
-        url = String[],
-    )
-    for friend_info in friends
-        friend_flattened = Dict(
-            :username => parse_string(friend_info["name"]),
-            :country => parse_string(friend_info["country"]),
-            :playcount => parse_integer(friend_info["playcount"]),
-            :playlists => parse_integer(friend_info["playlists"]),
-            :realname => parse_string(friend_info["realname"]),
-            :subscriber => parse_bool(friend_info["subscriber"]),
-            :url => parse_string(friend_info["url"]),
-        )
-        push!(output, friend_flattened)
-    end
-    return output
+    friends = JSON3.read(String(response.body))[:friends][:user]
+    return [
+        User(
+            username = parse_string(friend_info[:name]),
+            bootstrap = parse_bool(friend_info[:bootstrap]),
+            country = parse_string(friend_info[:country]),
+            images = parse_images(friend_info[:image]),
+            playcount = parse_integer(friend_info[:playcount]),
+            playlists = parse_integer(friend_info[:playlists]),
+            real_name = parse_string(friend_info[:realname]),
+            registered = parse_unix_timestamp(friend_info[:registered][:unixtime]),
+            subscriber = parse_string(friend_info[:subscriber]),
+            type = parse_string(friend_info[:type]),
+            url = parse_url(friend_info[:url]),
+        ) for friend_info in friends
+    ]
 end
 
 """
-    function user_get_info(username::String)::DataFrame
+    function user_get_info(username::String)::User
 
 Get information about a user profile.
-
-* `username` The name of the Last.fm user to fetch the info of
 """
-function user_get_info(username::String)::DataFrame
+function user_get_info(username::String)::User
     uri::HTTP.URI = get_uri("user.getInfo", user = username)
     response::HTTP.Response = get_response(uri)
-    user_info = JSON3.read(String(response.body))["user"]
-    output::DataFrame = DataFrame(
-        username = String[],
-        age = Integer[],
-        bootstrap = Bool[],
-        country = String[],
-        gender = String[],
-        playcount = Integer[],
-        playlists = Integer[],
-        realname = String[],
-        registered_datetime = DateTime[],
-        subscriber = String[],
-        type = String[],
-        url = String[],
+    user_info = JSON3.read(String(response.body))[:user]
+    return User(
+        username = parse_string(user_info[:name]),
+        age = parse_integer(user_info[:age]),
+        bootstrap = parse_bool(user_info[:bootstrap]),
+        country = parse_string(user_info[:country]),
+        gender = parse_string(user_info[:gender]),
+        images = parse_images(user_info[:image]),
+        playcount = parse_integer(user_info[:playcount]),
+        playlists = parse_integer(user_info[:playlists]),
+        real_name = parse_string(user_info[:realname]),
+        registered = parse_unix_timestamp(user_info[:registered][:unixtime]),
+        subscriber = parse_string(user_info[:subscriber]),
+        type = parse_string(user_info[:type]),
+        url = parse_url(user_info[:url]),
     )
-    user_flattened = Dict(
-        :username => parse_string(user_info["name"]),
-        :age => parse_integer(user_info["age"]),
-        :bootstrap => parse_bool(user_info["bootstrap"]),
-        :country => parse_string(user_info["country"]),
-        :gender => parse_string(user_info["gender"]),
-        :playcount => parse_integer(user_info["playcount"]),
-        :playlists => parse_integer(user_info["playlists"]),
-        :realname => parse_string(user_info["realname"]),
-        :registered_datetime => parse_unix_timestamp(user_info["registered"]["unixtime"]),
-        :subscriber => parse_string(user_info["subscriber"]),
-        :type => parse_string(user_info["type"]),
-        :url => parse_string(user_info["url"]),
-    )
-    push!(output, user_flattened)
-    return output
 end
 
 """
-    function user_get_loved_tracks(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+    function user_get_loved_tracks(username::String; )::DataFrame
 
 Get the last 50 tracks loved by a user.
-
-* `username` The name of the Last.fm user to fetch the loved tracks of
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
 """
-function user_get_loved_tracks(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+function user_get_loved_tracks(username::String)::Vector{Track}
     uri::HTTP.URI = get_uri("user.getLovedTracks", user = username)
     response::HTTP.Response = get_response(uri)
-    loved_tracks = JSON3.read(String(response.body))["lovedtracks"]["track"]
-    output::DataFrame = DataFrame(track = String[], artist = String[], date = DateTime[], url = String[])
-    for loved_track in loved_tracks
-        loved_track_flattened = Dict(
-            :track => parse_string(loved_track["name"]),
-            :artist => parse_string(loved_track["artist"]["name"]),
-            :date => parse_unix_timestamp(loved_track["date"]["uts"]),
-            :url => parse_string(loved_track["url"]),
-        )
-        push!(output, loved_track_flattened)
-    end
-    return output
+    loved_tracks = JSON3.read(String(response.body))[:lovedtracks][:track]
+    return [
+        Track(
+            track = loved_track[:name],
+            mbid = loved_track[:mbid],
+            loved_date = parse_unix_timestamp(loved_track[:date][:uts]),
+            images = parse_images(loved_track[:image]),
+            artist = Artist(
+                artist = loved_track[:artist][:name],
+                mbid = loved_track[:artist][:mbid],
+                url = parse_url(loved_track[:artist][:url]),
+            ),
+            url = parse_url(loved_track[:url]),
+        ) for loved_track in loved_tracks
+    ]
 end
 
-"""
-    function user_get_personal_tags(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame
 
-Get the user's personal tags
-
-* `username` The name of the Last.fm user to fetch the personal tags of
-* `tag` The tag you are interested in
-* `tagging_type` The type of items which have been tagged
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
-"""
-function user_get_personal_tags(
-    username::String,
-    tag::String,
-    tagging_type::String;
-    limit::Integer = 50,
-    page::Integer = 1,
-)::DataFrame
-    @assert tagging_type ∈ valid_tagging_types "tagging_type must be one of '$(join(valid_tagging_types, "', '", "' or '"))'."
-    if tagging_type == "artist"
-        return user_get_personal_artist_tags(username, tag; limit = limit, page = page)
-    elseif tagging_type == "album"
-        return user_get_personal_album_tags(username, tag; limit = limit, page = page)
-    elseif tagging_type == "track"
-        return user_get_personal_track_tags(username, tag; limit = limit, page = page)
-    else
-        return DataFrame()
-    end
-end
 
 """
-    function user_get_personal_artist_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+    function user_get_personal_artist_tags(username::String, tag::String; )::DataFrame
 
 Get the user's personal tags for artists.
-
-* `username` The name of the Last.fm user to fetch the personal tags of
-* `tag` The tag you are interested in
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
 """
-function user_get_personal_artist_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+function user_get_personal_artist_tags(username::String, tag::String)::Vector{Artist}
     uri::HTTP.URI = get_uri("user.getPersonalTags", user = username, tag = tag, taggingtype = "artist")
     response::HTTP.Response = get_response(uri)
     artist_tags = JSON3.read(String(response.body))[:taggings][:artists][:artist]
-    output::DataFrame = DataFrame(tag = String[], artist = String[], artist_mbid = String[], artist_url = String[])
-    for artist_tag in artist_tags
-        artist_tag_flattened = Dict(
-            :tag => tag,
-            :artist => parse_string(artist_tag[:name]),
-            :artist_mbid => parse_string(artist_tag[:mbid]),
-            :artist_url => parse_string(artist_tag[:url]),
-        )
-        push!(output, artist_tag_flattened)
-    end
-    return output
+    return [
+        Artist(
+            artist = parse_string(artist_tag[:name]),
+            mbid = parse_string(artist_tag[:mbid]),
+            images = parse_images(artist_tag[:image]),
+            url = parse_url(artist_tag[:url]),
+        ) for artist_tag in artist_tags
+    ]
 end
 
 """
-    function user_get_personal_album_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+    function user_get_personal_album_tags(username::String, tag::String; )::DataFrame
 
 Get the user's personal tags for albums.
-
-* `username` The name of the Last.fm user to fetch the personal tags of
-* `tag` The tag you are interested in
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
 """
-function user_get_personal_album_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+function user_get_personal_album_tags(username::String, tag::String)::Vector{Album}
     uri::HTTP.URI = get_uri("user.getPersonalTags", user = username, tag = tag, taggingtype = "album")
     response::HTTP.Response = get_response(uri)
     album_tags = JSON3.read(String(response.body))[:taggings][:albums][:album]
-    output::DataFrame = DataFrame(
-        tag = String[],
-        album = String[],
-        artist = String[],
-        album_mbid = String[],
-        album_url = String[],
-        artist_mbid = String[],
-        artist_url = String[],
-    )
-    for album_tag in album_tags
-        album_tag_flattened = Dict(
-            :tag => tag,
-            :album => parse_string(album_tag[:name]),
-            :artist => parse_string(album_tag[:artist][:name]),
-            :album_mbid => parse_string(album_tag[:mbid]),
-            :album_url => parse_string(album_tag[:url]),
-            :artist_mbid => parse_string(album_tag[:artist][:mbid]),
-            :artist_url => parse_string(album_tag[:artist][:url]),
-        )
-        push!(output, album_tag_flattened)
-    end
-    return output
+    return [
+        Album(
+            album = parse_string(album_tag[:name]),
+            mbid = parse_string(album_tag[:mbid]),
+            images = parse_images(album_tag[:image]),
+            artist = Artist(
+                artist = parse_string(album_tag[:artist][:name]),
+                mbid = parse_string(album_tag[:artist][:mbid]),
+                url = parse_url(album_tag[:artist][:url]),
+            ),
+        ) for album_tag in album_tags
+    ]
 end
 
 """
-    function user_get_personal_track_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+    function user_get_personal_track_tags(username::String, tag::String; )::DataFrame
 
 Get the user's personal tags for tracks.
-
-* `username` The name of the Last.fm user to fetch the personal tags of
-* `tag` The tag you are interested in
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
 """
-function user_get_personal_track_tags(username::String, tag::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+function user_get_personal_track_tags(username::String, tag::String)::Vector{Track}
     uri::HTTP.URI = get_uri("user.getPersonalTags", user = username, tag = tag, taggingtype = "track")
     response::HTTP.Response = get_response(uri)
     track_tags = JSON3.read(String(response.body))[:taggings][:tracks][:track]
-    output::DataFrame = DataFrame(
-        tag = String[],
-        track = String[],
-        duration = Union{Integer, Missing}[],
-        artist = String[],
-        track_mbid = String[],
-        track_url = String[],
-        artist_mbid = String[],
-        artist_url = String[],
-    )
-    for track_tag in track_tags
-        track_tag_flattened = Dict(
-            :tag => tag,
-            :track => parse_string(track_tag[:name]),
-            :duration => (track_tag[:duration] == "FIXME") ? missing : parse_integer(track_tag[:duration]),
-            :artist => parse_string(track_tag[:artist][:name]),
-            :track_mbid => parse_string(track_tag[:mbid]),
-            :track_url => parse_string(track_tag[:url]),
-            :artist_mbid => parse_string(track_tag[:artist][:mbid]),
-            :artist_url => parse_string(track_tag[:artist][:url]),
-        )
-        push!(output, track_tag_flattened)
-    end
-    return output
+    return [
+        Track(
+            track = parse_string(track_tag[:name]),
+            duration = (track_tag[:duration] == "FIXME") ? missing : Dates.second(parse_integer(track_tag[:duration])),
+            mbid = parse_string(track_tag[:mbid]),
+            url = parse_url(track_tag[:url]),
+            images = parse_images(track_tag[:image]),
+            artist = Artist(
+                artist = parse_string(track_tag[:artist][:name]),
+                mbid = parse_string(track_tag[:artist][:mbid]),
+                url = parse_url(track_tag[:artist][:url]),
+            ),
+        ) for track_tag in track_tags
+    ]
+
 end
 
 """
-    function user_get_recent_tracks(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+    function user_get_recent_tracks(username::String)::DataFrame
 
-Get a list of the recent tracks listened to by this user. Also includes the currently playing track with the nowplaying="true" attribute if the user is currently listening.
-
-* `username` The name of the Last.fm user to fetch the recent tracks of
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
-* `from` (Optional) : Beginning timestamp of a range - only display scrobbles after this time, in UNIX timestamp format (integer number of seconds since 00:00:00, January 1st 1970 UTC). This must be in the UTC time zone.
-* `extended` (0|1) (Optional): Includes extended data in each artist, and whether or not the user has loved each track
-* `to` (Optional) : End timestamp of a range - only display scrobbles before this time, in UNIX timestamp format (integer number of seconds since 00:00:00, January 1st 1970 UTC). This must be in the UTC time zone.
+Get a list of the recent tracks listened to by this user. Also includes the currently playing track with the nowplaying=true attribute if the user is currently listening.
 """
-function user_get_recent_tracks(username::String; limit::Integer = 50, page::Integer = 1)::DataFrame
+function user_get_recent_tracks(username::String)::Vector{Track}
     # TODO: get nowplaying = true/false
-    @assert 1 <= limit <= 200 "limit must be between 1 and 200."
-    uri::HTTP.URI = get_uri("user.getRecentTracks", user = username)
+    uri::HTTP.URI = get_uri("user.getRecentTracks", user = username, nowplaying = true)
     response::HTTP.Response = get_response(uri)
-    recent_tracks = JSON3.read(String(response.body))["recenttracks"]["track"]
-    output::DataFrame = DataFrame(
-        track = String[],
-        album = String[],
-        artist = String[],
-        date = Union{DateTime, Missing}[],
-        url = String[],
-        now_playing = Bool[],
-    )
-    for recent_track in recent_tracks
-        now_playing = haskey(recent_track, "@attr")
-        recent_track_flattened = Dict(
-            :track => parse_string(recent_track["name"]),
-            :album => parse_string(recent_track["album"]["#text"]),
-            :artist => parse_string(recent_track["artist"]["#text"]),
-            :date => now_playing ? missing : parse_unix_timestamp(recent_track["date"]["uts"]),
-            :url => parse_string(recent_track["url"]),
-            :now_playing => now_playing,
-        )
-        push!(output, recent_track_flattened)
-    end
-    return output
+    recent_tracks = JSON3.read(String(response.body))[:recenttracks][:track]
+    return [
+        Track(
+            track = parse_string(recent_track[:name]),
+            artist = Artist(artist = recent_track[:artist][Symbol("#text")], mbid = recent_track[:artist][:mbid]),
+            album = Album(
+                album = recent_track[:album][Symbol("#text")],
+                mbid = recent_track[:album][:mbid],
+                artist = Artist(artist = recent_track[:artist][Symbol("#text")], mbid = recent_track[:artist][:mbid]),
+            ),
+            images = parse_images(recent_track[:image]),
+            date = haskey(recent_track, Symbol("@attr")) ? missing : parse_unix_timestamp(recent_track[:date][:uts]),
+            url = parse_url(recent_track[:url]),
+            mbid = parse_string(recent_track[:mbid]),
+        ) for recent_track in recent_tracks
+    ]
 end
 
 """
-    function user_get_top_albums(username::String; period::String = "overall", limit::Integer = 50, page::Integer = 1)::DataFrame
+    function user_get_top_albums(username::String; period::String = "overall", )::DataFrame
 
 Get the top albums listened to by a user. You can stipulate a time period. Sends the overall chart by default.
-
-* `username` The name of the Last.fm user to fetch the top albums of
-* `period` The time period to retrieve the top albums for
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
 """
-function user_get_top_albums(
-    username::String;
-    period::String = "overall",
-    limit::Integer = 50,
-    page::Integer = 1,
-)::DataFrame
+function user_get_top_albums(username::String; period::String = "overall")::Dict{Integer, Album}
     @assert period ∈ valid_periods "period must be one of '$(join(valid_periods, "', '", "' or '"))'."
     uri::HTTP.URI = get_uri("user.getTopAlbums", user = username)
     response::HTTP.Response = get_response(uri)
     top_albums = JSON3.read(String(response.body))["topalbums"]["album"]
-    output::DataFrame = DataFrame(rank = Integer[], album = String[], artist = String[], playcount = Integer[])
-    for top_album in top_albums
-        top_album_flattened = Dict(
-            :rank => parse_integer(top_album["@attr"]["rank"]),
-            :album => parse_string(top_album["name"]),
-            :artist => parse_string(top_album["artist"]["name"]),
-            :playcount => parse_integer(top_album["playcount"]),
-        )
-        push!(output, top_album_flattened)
-    end
-    return output
+    return Dict(
+        parse_integer(top_album[Symbol("@attr")][:rank]) => Album(
+            album = parse_string(top_album[:name]),
+            artist = Artist(
+                artist = parse_string(top_album[:artist][:name]),
+                mbid = parse_string(top_album[:artist][:mbid]),
+                url = parse_url(top_album[:artist][:url]),
+            ),
+            images = parse_images(top_album[:image]),
+            user_playcount = parse_integer(top_album[:playcount]),
+            url = parse_url(top_album[:url]),
+            mbid = parse_string(top_album[:mbid]),
+        ) for top_album in top_albums
+    )
 end
 
 """
-    function user_get_top_artists(username::String; period::String = "overall", limit::Integer = 50, page::Integer = 1)::DataFrame
+    function user_get_top_artists(username::String; period::String = "overall")::DataFrame
 
 Get the top artists listened to by a user. You can stipulate a time period. Sends the overall chart by default.
-
-* `username` The name of the Last.fm user to fetch the top artists of
-* `period` The time period to retrieve the top artists for
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
 """
-function user_get_top_artists(
-    username::String;
-    period::String = "overall",
-    limit::Integer = 50,
-    page::Integer = 1,
-)::DataFrame
+function user_get_top_artists(username::String; period::String = "overall")::Dict{Integer, Artist}
     @assert period ∈ valid_periods "period must be one of '$(join(valid_periods, "', '", "' or '"))'."
     uri::HTTP.URI = get_uri("user.getTopArtists", user = username)
     response::HTTP.Response = get_response(uri)
-    top_artists = JSON3.read(String(response.body))["topartists"]["artist"]
-    output::DataFrame = DataFrame(rank = Integer[], artist = String[], playcount = Integer[])
-    for top_artist in top_artists
-        top_artist_flattened = Dict(
-            :rank => parse_integer(top_artist["@attr"]["rank"]),
-            :artist => parse_string(top_artist["name"]),
-            :playcount => parse_integer(top_artist["playcount"]),
-        )
-        push!(output, top_artist_flattened)
-    end
-    return output
+    top_artists = JSON3.read(String(response.body))[:topartists][:artist]
+    return Dict(
+        parse_integer(top_artist[Symbol("@attr")][:rank]) => Artist(
+            artist = parse_string(top_artist[:name]),
+            mbid = parse_string(top_artist[:mbid]),
+            url = parse_url(top_artist[:url]),
+            user_playcount = parse_integer(top_artist[:playcount]),
+            images = parse_images(top_artist[:image]),
+        ) for top_artist in top_artists
+    )
 end
 
 """
     function user_get_top_tags(username::String; limit::Integer = 50)::DataFrame
 
 Get the top tags used by this user.
-
-* `username` The name of the Last.fm user to fetch the top tags of
-* `limit` The number of results to fetch per page
 """
-function user_get_top_tags(username::String; limit::Integer = 50)::DataFrame
+function user_get_top_tags(username::String; limit::Integer = 50)::Dict{Tag, Integer}
     uri::HTTP.URI = get_uri("user.getTopTags", user = username)
     response::HTTP.Response = get_response(uri)
     top_tags = JSON3.read(String(response.body))[:toptags][:tag]
-    output::DataFrame = DataFrame(tag = String[], n = Integer[], tag_url = String[])
-    for top_tag in top_tags
-        top_tag_flattened = Dict(
-            :tag => parse_string(top_tag[:name]),
-            :n => parse_integer(top_tag[:count]),
-            :tag_url => parse_string(top_tag[:url]),
-        )
-        push!(output, top_tag_flattened)
-    end
-    return output
+    return Dict(
+        Tag(tag = parse_string(top_tag[:name]), url = parse_url(top_tag[:url])) => parse_integer(top_tag[:count])
+        for top_tag in top_tags
+    )
 end
 
 """
     function user_get_top_tracks(username::String; period::String = "overall", limit::Int = 50, page::Integer = 1)::DataFrame
 
 Get the top tracks listened to by a user. You can stipulate a time period. Sends the overall chart by default.
-
-* `username` The name of the Last.fm user to fetch the top tracks of
-* `period` The time period over which to retrieve top tracks for
-* `limit` The number of results to fetch per page
-* `page` The page number to fetch
 """
-function user_get_top_tracks(
-    username::String;
-    period::String = "overall",
-    limit::Int = 50,
-    page::Integer = 1,
-)::DataFrame
+function user_get_top_tracks(username::String; period::String = "overall")::Dict{Integer, Track}
     @assert period ∈ valid_periods "period must be one of '$(join(valid_periods, "', '", "' or '"))'."
-    @assert 1 <= limit <= 200 "limit must be between 1 and 200."
     uri::HTTP.URI = get_uri("user.getTopTracks", user = username)
     response::HTTP.Response = get_response(uri)
     top_tracks = JSON3.read(String(response.body))[:toptracks][:track]
-    output::DataFrame = DataFrame(
-        rank = Integer[],
-        track = String[],
-        artist = String[],
-        playcount = Integer[],
-        duration = Integer[],
-        track_mbid = String[],
-        track_url = String[],
-        artist_mbid = String[],
-        artist_url = String[],
+    return Dict(
+        parse_integer(top_track[Symbol("@attr")][:rank]) => Track(
+            track = parse_string(top_track[:name]),
+            artist = Artist(
+                artist = parse_string(top_track[:artist][:name]),
+                mbid = parse_string(top_track[:artist][:mbid]),
+                url = parse_url(top_track[:artist][:url]),
+            ),
+            user_playcount = parse_integer(top_track[:playcount]),
+            duration = Dates.Second(parse_integer(top_track[:duration])),
+            images = parse_images(top_track[:image]),
+            mbid = parse_string(top_track[:mbid]),
+            url = parse_url(top_track[:url]),
+        ) for top_track in top_tracks
     )
-    for top_track in top_tracks
-        top_track_flattened = Dict(
-            :rank => parse_integer(top_track[Symbol("@attr")][:rank]),
-            :track => parse_string(top_track[:name]),
-            :artist => parse_string(top_track[:artist][:name]),
-            :playcount => parse_integer(top_track[:playcount]),
-            :duration => parse_integer(top_track[:duration]),
-            :track_mbid => parse_string(top_track[:mbid]),
-            :track_url => parse_string(top_track[:url]),
-            :artist_mbid => parse_string(top_track[:artist][:mbid]),
-            :artist_url => parse_string(top_track[:artist][:url]),
-        )
-        push!(output, top_track_flattened)
-    end
-    return output
 end
 
 """
     function user_get_weekly_album_chart(username::String)::DataFrame
 
 Get an album chart for a user profile, for a given date range. If no date range is supplied, it will return the most recent album chart for this user.
-
-* `username` The name of the Last.fm user to fetch the album chart of
-* `from` (Optional) The date at which the chart should start from. See User.getChartsList for more.
-* `to` (Optional) The date at which the chart should end on. See User.getChartsList for more.
 """
-function user_get_weekly_album_chart(username::String)::DataFrame
+function user_get_weekly_album_chart(
+    username::String;
+    from::Union{Date, Missing} = missing,
+    to::Union{Date, Missing} = missing,
+)::Dict{Integer, Album}
     uri::HTTP.URI = get_uri("user.getWeeklyAlbumChart", user = username)
     response::HTTP.Response = get_response(uri)
     weekly_album_charts = JSON3.read(String(response.body))[:weeklyalbumchart][:album]
-    output::DataFrame = DataFrame(
-        rank = Integer[],
-        album = String[],
-        artist = String[],
-        playcount = Integer[],
-        album_mbid = String[],
-        artist_mbid = String[],
-        url = String[],
+    return Dict(
+        parse_integer(album_chart[Symbol("@attr")][:rank]) => Album(
+            album = parse_string(album_chart[:name]),
+            artist = Artist(
+                artist = parse_string(album_chart[:artist][Symbol("#text")]),
+                mbid = parse_string(album_chart[:artist][:mbid]),
+            ),
+            mbid = parse_string(album_chart[:mbid]),
+            user_playcount = parse_integer(album_chart[:playcount]),
+            url = parse_url(album_chart[:url]),
+        ) for album_chart in weekly_album_charts
     )
-    for album_chart in weekly_album_charts
-        album_chart_flattened = Dict(
-            :rank => parse_integer(album_chart[Symbol("@attr")][:rank]),
-            :album => parse_string(album_chart[:name]),
-            :artist => parse_string(album_chart[:artist][Symbol("#text")]),
-            :playcount => parse_integer(album_chart[:playcount]),
-            :album_mbid => parse_string(album_chart[:mbid]),
-            :artist_mbid => parse_string(album_chart[:artist][:mbid]),
-            :url => parse_string(album_chart[:url]),
-        )
-        push!(output, album_chart_flattened)
-    end
-    return output
 end
+
+user_get_weekly_album_chart(username::String, chart::Chart)::Dict{Integer, Album} =
+    user_get_weekly_album_chart(username; from = chart.from, to = chart.to)
 
 """
     function user_get_weekly_artist_chart(username::String; from::Date, to::Date)::DataFrame
 
 Get an artist chart for a user profile, for a given date range. If no date range is supplied, it will return the most recent artist chart for this user.
-
-* `username` The name of the Last.fm user to fetch the artist chart of.
-* `from` (Optional) The date at which the chart should start from. See `user_get_weekly_chart_list` for more.
-* `to` (Optional) The date at which the chart should end on. See `user_get_weekly_chart_list` for more.
 """
-function user_get_weekly_artist_chart(username::String)::DataFrame
+function user_get_weekly_artist_chart(
+    username::String;
+    from::Union{Date, Missing} = missing,
+    to::Union{Date, Missing} = missing,
+)::Dict{Integer, Artist}
     uri::HTTP.URI = get_uri("user.getWeeklyArtistChart", user = username)
     response::HTTP.Response = get_response(uri)
     weekly_artist_charts = JSON3.read(String(response.body))[:weeklyartistchart][:artist]
-    output::DataFrame = DataFrame(
-        rank = Integer[],
-        artist = String[],
-        playcount = Integer[],
-        artist_mbid = String[],
-        artist_url = String[],
+    return Dict(
+        parse_integer(artist_chart[Symbol("@attr")][:rank]) => Artist(
+            artist = parse_string(artist_chart[:name]),
+            user_playcount = parse_integer(artist_chart[:playcount]),
+            mbid = parse_string(artist_chart[:mbid]),
+            url = parse_url(artist_chart[:url]),
+        ) for artist_chart in weekly_artist_charts
     )
-    for artist_chart in weekly_artist_charts
-        artist_chart_flattened = Dict(
-            :rank => parse_integer(artist_chart[Symbol("@attr")][:rank]),
-            :artist => parse_string(artist_chart[:name]),
-            :playcount => parse_integer(artist_chart[:playcount]),
-            :artist_mbid => parse_string(artist_chart[:mbid]),
-            :artist_url => parse_string(artist_chart[:url]),
-        )
-        push!(output, artist_chart_flattened)
-    end
-    return output
 end
+
+user_get_weekly_artist_chart(username::String, chart::Chart)::Dict{Integer, Artist} =
+    user_get_weekly_artist_chart(username; from = chart.from, to = chart.to)
+
 
 """
     function user_get_weekly_chart_list(username::String)::DataFrame
 
 Get a list of available charts for this user, expressed as date ranges which can be sent to the chart services.
 """
-function user_get_weekly_chart_list(username::String)::DataFrame
+function user_get_weekly_chart_list(username::String)::Vector{Chart}
     uri::HTTP.URI = get_uri("user.getWeeklyChartList", user = username)
     response::HTTP.Response = get_response(uri)
     charts = JSON3.read(String(response.body))[:weeklychartlist][:chart]
-    output::DataFrame = DataFrame(from = Date[], to = Date[])
-    for chart in charts
-        chart_flattened =
-            Dict(:from => parse_core_data_timestamp(chart[:from]), :to => parse_core_data_timestamp(chart[:to]))
-        push!(output, chart_flattened)
-    end
-    return output
+    return [
+        Chart(from = parse_core_data_timestamp(chart[:from]), to = parse_core_data_timestamp(chart[:to]))
+        for chart in charts
+    ]
 end
 
 """
@@ -538,19 +367,27 @@ Get a track chart for a user profile, for a given date range. If no date range i
 * `from` (Optional) : The date at which the chart should start from. See User.getWeeklyChartList for more.
 * `to` (Optional) : The date at which the chart should end on. See User.getWeeklyChartList for more.
 """
-function user_get_weekly_track_chart(username::String)::DataFrame
+function user_get_weekly_track_chart(
+    username::String;
+    from::Union{Date, Missing} = missing,
+    to::Union{Date, Missing} = missing,
+)::Dict{Integer, Track}
     uri::HTTP.URI = get_uri("user.getWeeklyTrackChart", user = username)
     response::HTTP.Response = get_response(uri)
     weekly_track_charts = JSON3.read(String(response.body))[:weeklytrackchart][:track]
-    output::DataFrame = DataFrame(rank = Integer[], track = String[], artist = String[], playcount = Integer[])
-    for track_chart in weekly_track_charts
-        track_chart_flattened = Dict(
-            :rank => parse_integer(track_chart[Symbol("@attr")][:rank]),
-            :track => parse_string(track_chart[:name]),
-            :artist => parse_string(track_chart[:artist][Symbol("#text")]),
-            :playcount => parse_integer(track_chart[:playcount]),
-        )
-        push!(output, track_chart_flattened)
-    end
-    return output
+    return Dict(
+        parse_integer(track_chart[Symbol("@attr")][:rank]) => Track(
+            track = parse_string(track_chart[:name]),
+            mbid = parse_string(track_chart[:mbid]),
+            artist = Artist(
+                artist = parse_string(track_chart[:artist][Symbol("#text")]),
+                mbid = parse_string(track_chart[:artist][:mbid]),
+            ),
+            images = parse_images(track_chart[:image]),
+            user_playcount = parse_integer(track_chart[:playcount]),
+        ) for track_chart in weekly_track_charts
+    )
 end
+
+user_get_weekly_track_chart(username::String, chart::Chart)::Dict{Integer, Track} =
+    user_get_weekly_track_chart(username; from = chart.from, to = chart.to)
